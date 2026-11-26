@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jupiter Incident 2011</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Courier New",monospace;color:#d8ffd8}
+  canvas{display:block}
+  #hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 0 6px #000}
+  #top{position:absolute;top:12px;left:14px;font-size:15px;line-height:1.5}
+  #sub{position:absolute;bottom:60px;width:100%;text-align:center;font-size:16px;color:#ffd27a;padding:0 12px;box-sizing:border-box}
+  #bar{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:220px;height:10px;border:1px solid #9f9;background:#0008}
+  #stam{height:100%;width:100%;background:#7f7}
+  #arrow{position:absolute;top:14px;right:24px;font-size:42px;color:#7fffa0}
+  #dist{position:absolute;top:62px;right:14px;font-size:14px;width:70px;text-align:center}
+  #scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000d;text-align:center;padding:20px;box-sizing:border-box;cursor:pointer}
+  #scr h1{font-size:clamp(26px,6vw,52px);margin:0 0 10px;color:#ff9b3d;letter-spacing:2px}
+  #scr p{max-width:560px;line-height:1.5;margin:6px 0}
+  .btn{margin-top:18px;padding:12px 28px;border:2px solid #ff9b3d;color:#ff9b3d;font-size:18px}
+  .vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 140px #000;}
+  #hit{position:fixed;inset:0;pointer-events:none;background:radial-gradient(transparent 40%,#f00 130%);opacity:0;transition:opacity .2s}
+</style>
+</head>
+<body>
+<div class="vig"></div><div id="hit"></div>
+<div id="hud">
+  <div id="top"><b>JUPITER INCIDENT 2011</b><br>BLACK BOXES: <span id="bb">0</span>/3<br>OBJECTIVE: <span id="obj">Find the black boxes</span></div>
+  <div id="arrow">▲</div><div id="dist"></div>
+  <div id="sub"></div>
+  <div id="bar"><div id="stam"></div></div>
+</div>
+<div id="scr">
+  <h1 id="t">JUPITER INCIDENT 2011</h1>
+  <p id="d">Your crew is gone. The keys got them. You're the lone survivor on a moon of Jupiter.<br>Recover the 3 black boxes, then reach the escape pod.</p>
+  <p style="opacity:.7;font-size:14px">WASD / arrows: move &nbsp;|&nbsp; Mouse: look &nbsp;|&nbsp; Shift: sprint<br>Desktop only. Don't get touched by the keys.</p>
+  <div class="btn" id="b">CLICK TO START</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const R = Math.random;
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  document.body.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05060a);
+  scene.fog = new THREE.Fog(0x120a08, 20, 150);
+  const cam = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 1500);
+  scene.add(cam);
+  addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
+  });
+
+  // lights
+  scene.add(new THREE.AmbientLight(0x6a4a3a, .8));
+  const sun = new THREE.DirectionalLight(0xffc9a0, 1.1);
+  sun.position.set(-100, 90, -250); scene.add(sun);
+  const lamp = new THREE.PointLight(0xfff0d0, .9, 35); cam.add(lamp);
+
+  // terrain
+  const H = (x, z) => Math.sin(x*.05)*Math.cos(z*.04)*2.2 + Math.sin(x*.13+z*.11)*.6;
+  const g = new THREE.PlaneGeometry(400, 400, 120, 120); g.rotateX(-Math.PI/2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, H(p.getX(i), p.getZ(i)));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0x6b5448, flatShading:true, roughness:1})));
+
+  // rocks
+  const rockM = new THREE.MeshStandardMaterial({color:0x4a3b34, flatShading:true});
+  for (let i = 0; i < 120; i++) {
+    const x = (R()-.5)*380, z = (R()-.5)*380, s = .5 + R()*2.5;
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(s), rockM);
+    r.position.set(x, H(x,z)+s*.4, z); r.rotation.set(R()*3, R()*3, R()*3); scene.add(r);
+  }
+
+  // Jupiter
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512;
+  const cx = c.getContext('2d');
+  const cols = ['#c9996b','#e8d2b0','#a8683c','#f0e0c8','#8a5330','#d9b48a'];
+  for (let y = 0; y < 512; y += 8) {
+    cx.fillStyle = cols[(y/8 + (R()*2|0)) % cols.length];
+    cx.fillRect(0, y, 512, 8);
+  }
+  cx.fillStyle = '#b33b1e'; cx.beginPath(); cx.ellipse(340, 330, 50, 28, 0, 0, 7); cx.fill();
+  const jup = new THREE.Mesh(new THREE.SphereGeometry(130, 48, 32),
+    new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), fog:false}));
+  jup.position.set(-110, 100, -280); scene.add(jup);
+
+  // stars
+  const sp = [];
+  for (let i = 0; i < 900; i++) {
+    const v = new THREE.Vector3(R()-.5, R()*.6+.05, R()-.5).normalize().multiplyScalar(900);
+    sp.push(v.x, v.y, v.z);
+  }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:2, fog:false})));
+
+  // crashed ship
+  const ship = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 14, 12), new THREE.MeshStandardMaterial({color:0xbbbbbb, metalness:.4}));
+  hull.rotation.z = Math.PI/2; hull.position.y = 3; ship.add(hull);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(3, 5, 12), new THREE.MeshStandardMaterial({color:0xdd4422}));
+  nose.rotation.z = -Math.PI/2; nose.position.set(9.5, 3, 0); ship.add(nose);
+  ship.position.set(0, H(0,0), 6); ship.rotation.z = .12; scene.add(ship);
+
+  // black boxes
+  const boxes = [];
+  const bbM = new THREE.MeshStandardMaterial({color:0xff7a00, emissive:0xff4400, emissiveIntensity:.6});
+  for (let i = 0; i < 3; i++) {
+    const a = i*2.1 + R()*.8, d = 45 + R()*70;
+    const x = Math.cos(a)*d, z = Math.sin(a)*d;
+    const grp = new THREE.Group();
+    grp.add(new THREE.Mesh(new THREE.BoxGeometry(1,.7,.7), bbM));
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,40,6), new THREE.MeshBasicMaterial({color:0xff8800, transparent:true, opacity:.35, fog:false}));
+    beam.position.y = 20; grp.add(beam);
+    grp.position.set(x, H(x,z)+.8, z); scene.add(grp); boxes.push(grp);
+  }
+
+  // escape pod
+  const pod = new THREE.Group();
+  pod.add(new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), new THREE.MeshStandardMaterial({color:0xdddddd})));
+  const podBeam = new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,60,8), new THREE.MeshBasicMaterial({color:0x44ff88, transparent:true, opacity:.4, fog:false}));
+  podBeam.position.y = 30; podBeam.visible = false; pod.add(podBeam);
+  const pa = R()*6.28; const px = Math.cos(pa)*150, pz = Math.sin(pa)*150;
+  pod.position.set(px, H(px,pz)+2, pz); scene.add(pod);
+
+  // keys (the aliens)
+  const sideM = new THREE.MeshStandardMaterial({color:0x222226});
+  const letters = 'ASDWEQZXCKEYSOALGO'.split('');
+  const topMats = letters.map(L => {
+    const k = document.createElement('canvas'); k.width = k.height = 64;
+    const q = k.getContext('2d'); q.fillStyle = '#d9d9de'; q.fillRect(0,0,64,64);
+    q.fillStyle = '#111'; q.font = 'bold 44px monospace'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(L, 32, 34);
+    return new THREE.MeshStandardMaterial({map:new THREE.CanvasTexture(k)});
+  });
+  const eyeW = new THREE.MeshBasicMaterial({color:0xffffff}), eyeB = new THREE.MeshBasicMaterial({color:0xff0000});
+  const keyGeo = new THREE.BoxGeometry(1.3, .9, 1.3);
+  const keys = [];
+  function spawnKey(px_, pz_) {
+    const a = R()*6.28, d = 55 + R()*25;
+    const x = Math.max(-190, Math.min(190, px_ + Math.cos(a)*d)), z = Math.max(-190, Math.min(190, pz_ + Math.sin(a)*d));
+    const m = topMats[R()*topMats.length|0];
+    const k = new THREE.Group();
+    k.add(new THREE.Mesh(keyGeo, [sideM,sideM,m,sideM,sideM,sideM]));
+    for (const s of [-.3,.3]) {
+      const e = new THREE.Mesh(new THREE.SphereGeometry(.14,8,8), eyeW); e.position.set(s,.1,.66); k.add(e);
+      const pu = new THREE.Mesh(new THREE.SphereGeometry(.07,8,8), eyeB); pu.position.set(s,.1,.78); k.add(pu);
+    }
+    k.position.set(x, H(x,z), z);
+    k.userData = {ph:R()*6, sp:.85 + R()*.3};
+    scene.add(k); keys.push(k);
+  }
+
+  // audio
+  let ac;
+  const beep = (f, t=.15, type='square', v=.08) => {
+    try {
+      ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+      const o = ac.createOscillator(), gn = ac.createGain();
+      o.type = type; o.frequency.value = f; gn.gain.value = v;
+      gn.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + t);
+      o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + t);
+    } catch(e){}
+  };
+
+  // state
+  let state = 'menu', yaw = 0, pitch = 0, got = 0, stam = 1, time = 0, spawnT = 0, subT = 0;
+  const pos = new THREE.Vector3(0, 0, 14);
+  const keysDown = {};
+  const lines = [
+    '[BLACK BOX] "Commander, there\'s something moving out there."',
+    '[BLACK BOX] "They\'re... keys. Giant keys. Why are there keys?"',
+    '[BLACK BOX] "Nobody ask how. Just get to the pod."'
+  ];
+  const say = (s, t=4) => { $('sub').textContent = s; subT = t; };
+
+  function reset() {
+    keys.forEach(k => scene.remove(k)); keys.length = 0;
+    boxes.forEach(b => b.visible = true); podBeam.visible = false;
+    got = 0; stam = 1; time = 0; spawnT = 0; yaw = 0; pitch = 0; pos.set(0, 0, 14);
+    $('bb').textContent = 0; $('obj').textContent = 'Find the black boxes';
+    say('[MISSION LOG] Crew status: unknown. Find the black boxes.', 5);
+  }
+
+  function end(win) {
+    state = 'over';
+    if (document.pointerLockElement) document.exitPointerLock();
+    $('t').textContent = win ? 'LONE SURVIVOR' : 'THE KEYS GOT YOU';
+    $('t').style.color = win ? '#7fffa0' : '#ff4a3d';
+    $('d').innerHTML = win
+      ? 'You made it off Jupiter. Nobody will believe you. Time: ' + time.toFixed(1) + 's'
+      : 'Black box recording ends. Boxes recovered: ' + got + '/3.<br>Signal lost. Their corpses are still on Jupiter since 2011.';
+    $('b').textContent = 'CLICK TO TRY AGAIN';
+    $('scr').style.display = 'flex';
+    if (!win) { $('hit').style.opacity = 1; beep(90, .6, 'sawtooth', .15); }
+  }
+
+  $('scr').addEventListener('click', () => {
+    $('hit').style.opacity = 0;
+    if (state !== 'play') reset();
+    state = 'play'; $('scr').style.display = 'none';
+    renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock();
+    beep(440, .1);
+  });
+  addEventListener('keydown', e => { keysDown[e.code] = true; });
+  addEventListener('keyup', e => { keysDown[e.code] = false; });
+  addEventListener('mousemove', e => {
+    if (document.pointerLockElement !== renderer.domElement) return;
+    yaw -= e.movementX*.0023; pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY*.0023));
+  });
+  document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && state === 'play') { state = 'menu'; $('t').textContent = 'PAUSED'; $('d').textContent = 'Click to resume.'; $('b').textContent = 'RESUME'; $('scr').style.display = 'flex'; }
+  });
+
+  const clock = new THREE.Clock();
+  function loop() {
+    requestAnimationFrame(loop);
+    const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+    jup.rotation.y += dt*.01;
+    boxes.forEach((b, i) => { b.rotation.y += dt*2; });
+    if (state === 'play') {
+      time += dt;
+      // movement
+      const f = (keysDown.KeyW||keysDown.ArrowUp ? 1:0) - (keysDown.KeyS||keysDown.ArrowDown ? 1:0);
+      const s = (keysDown.KeyD||keysDown.ArrowRight ? 1:0) - (keysDown.KeyA||keysDown.ArrowLeft ? 1:0);
+      const sprint = keysDown.ShiftLeft || keysDown.ShiftRight;
+      const canSprint = sprint && stam > 0 && (f||s);
+      stam = Math.max(0, Math.min(1, stam + (canSprint ? -.28 : .15)*dt));
+      const spd = canSprint ? 11 : 7;
+      const len = Math.hypot(f, s) || 1;
+      pos.x += (-Math.sin(yaw)*f + Math.cos(yaw)*s)/len*spd*dt;
+      pos.z += (-Math.cos(yaw)*f - Math.sin(yaw)*s)/len*spd*dt;
+      pos.x = Math.max(-195, Math.min(195, pos.x)); pos.z = Math.max(-195, Math.min(195, pos.z));
+      const bob = (f||s) ? Math.sin(t*(canSprint?14:9))*.07 : 0;
+      cam.position.set(pos.x, H(pos.x,pos.z)+1.7+bob, pos.z);
+      cam.rotation.set(pitch, yaw, 0, 'YXZ');
+      $('stam').style.width = (stam*100)+'%';
+
+      // keys
+      spawnT -= dt;
+      const maxKeys = Math.min(6 + time/8|0, 28);
+      if (spawnT <= 0 && keys.length < maxKeys) { spawnKey(pos.x, pos.z); spawnT = Math.max(.8, 3 - time/40); }
+      const base = 5 + Math.min(time/20, 3);
+      for (const k of keys) {
+        const dx = pos.x - k.position.x, dz = pos.z - k.position.z, d = Math.hypot(dx, dz);
+        if (d < 1.4) { end(false); break; }
+        k.position.x += dx/d*base*k.userData.sp*dt; k.position.z += dz/d*base*k.userData.sp*dt;
+        k.rotation.y = Math.atan2(dx, dz);
+        k.position.y = H(k.position.x, k.position.z) + .7 + Math.abs(Math.sin(t*9 + k.userData.ph))*.9;
+        k.rotation.x = Math.sin(t*9 + k.userData.ph)*.15;
+      }
+
+      // black boxes
+      boxes.forEach(b => {
+        if (b.visible && Math.hypot(b.position.x-pos.x, b.position.z-pos.z) < 2.5) {
+          b.visible = false; got++; $('bb').textContent = got; beep(880, .2, 'sine', .12);
+          say(lines[got-1], 5);
+          if (got === 3) { podBeam.visible = true; $('obj').textContent = 'Reach the escape pod!'; beep(1200, .4, 'sine', .12); }
+        }
+      });
+
+      // objective pointer
+      let tgt = null, best = 1e9;
+      if (got < 3) boxes.forEach(b => { if (b.visible) { const d = Math.hypot(b.position.x-pos.x, b.position.z-pos.z); if (d < best) { best = d; tgt = b.position; } } });
+      else { tgt = pod.position; best = Math.hypot(pod.position.x-pos.x, pod.position.z-pos.z); }
+      if (tgt) {
+        const ang = Math.atan2(-(tgt.x-pos.x), -(tgt.z-pos.z)) - yaw;
+        $('arrow').style.transform = 'rotate(' + (-ang) + 'rad)';
+        $('dist').textContent = best.toFixed(0) + ' m';
+      }
+      if (got === 3 && best < 4) end(true);
+
+      if (subT > 0) { subT -= dt; if (subT <= 0) $('sub').textContent = ''; }
+    } else {
+      cam.position.set(Math.sin(t*.1)*30, 8, Math.cos(t*.1)*30 + 14);
+      cam.lookAt(0, 3, 6);
+    }
+    renderer.render(scene, cam);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
