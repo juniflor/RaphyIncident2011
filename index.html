@@ -1,289 +1,179 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jupiter Incident 2011</title>
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Courier New",monospace;color:#d8ffd8}
-  canvas{display:block}
-  #hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 0 6px #000}
-  #top{position:absolute;top:12px;left:14px;font-size:15px;line-height:1.5}
-  #sub{position:absolute;bottom:60px;width:100%;text-align:center;font-size:16px;color:#ffd27a;padding:0 12px;box-sizing:border-box}
-  #bar{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);width:220px;height:10px;border:1px solid #9f9;background:#0008}
-  #stam{height:100%;width:100%;background:#7f7}
-  #arrow{position:absolute;top:14px;right:24px;font-size:42px;color:#7fffa0}
-  #dist{position:absolute;top:62px;right:14px;font-size:14px;width:70px;text-align:center}
-  #scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000d;text-align:center;padding:20px;box-sizing:border-box;cursor:pointer}
-  #scr h1{font-size:clamp(26px,6vw,52px);margin:0 0 10px;color:#ff9b3d;letter-spacing:2px}
-  #scr p{max-width:560px;line-height:1.5;margin:6px 0}
-  .btn{margin-top:18px;padding:12px 28px;border:2px solid #ff9b3d;color:#ff9b3d;font-size:18px}
-  .vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 140px #000;}
-  #hit{position:fixed;inset:0;pointer-events:none;background:radial-gradient(transparent 40%,#f00 130%);opacity:0;transition:opacity .2s}
-</style>
-</head>
-<body>
-<div class="vig"></div><div id="hit"></div>
-<div id="hud">
-  <div id="top"><b>JUPITER INCIDENT 2011</b><br>BLACK BOXES: <span id="bb">0</span>/3<br>OBJECTIVE: <span id="obj">Find the black boxes</span></div>
-  <div id="arrow">▲</div><div id="dist"></div>
-  <div id="sub"></div>
-  <div id="bar"><div id="stam"></div></div>
-</div>
-<div id="scr">
-  <h1 id="t">JUPITER INCIDENT 2011</h1>
-  <p id="d">Your crew is gone. The keys got them. You're the lone survivor on a moon of Jupiter.<br>Recover the 3 black boxes, then reach the escape pod.</p>
-  <p style="opacity:.7;font-size:14px">WASD / arrows: move &nbsp;|&nbsp; Mouse: look &nbsp;|&nbsp; Shift: sprint<br>Desktop only. Don't get touched by the keys.</p>
-  <div class="btn" id="b">CLICK TO START</div>
-</div>
-
+html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Courier New",monospace;color:#cfe}
+canvas{display:block}
+#st{position:fixed;top:12px;left:14px;font-size:14px;line-height:1.5;white-space:pre;text-shadow:0 0 5px #000}
+#am{position:fixed;bottom:16px;right:18px;font-size:18px;color:#ffd27a}
+#sub{position:fixed;bottom:70px;width:100%;text-align:center;font-size:16px;color:#ffd27a;text-shadow:0 0 5px #000;padding:0 12px;box-sizing:border-box}
+#pr{position:fixed;top:58%;width:100%;text-align:center;font-size:16px;color:#7ff}
+#xh{position:fixed;top:50%;left:50%;width:6px;height:6px;margin:-3px;border:1px solid #fff9;border-radius:50%}
+#hit{position:fixed;inset:0;pointer-events:none;background:radial-gradient(transparent 35%,#f00 130%);opacity:0;transition:opacity .25s}
+#scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000e;text-align:center;padding:20px;box-sizing:border-box;cursor:pointer}
+#scr h1{font-size:clamp(26px,6vw,50px);margin:0 0 10px;color:#ff9b3d}
+#scr p{max-width:600px;line-height:1.5;margin:6px 0}
+.b{margin-top:16px;padding:12px 28px;border:2px solid #ff9b3d;color:#ff9b3d;font-size:18px}
+</style></head><body>
+<div id="st"></div><div id="am"></div><div id="sub"></div><div id="pr"></div><div id="xh"></div><div id="hit"></div>
+<div id="scr"><h1 id="t">JUPITER INCIDENT 2011</h1>
+<p id="d">The ship is dark. The Keis are coming. Find a weapon crate, defend the core, and search the moon for the 3 launch code parts. The escape pod stays hidden until the code is complete.</p>
+<p style="opacity:.7;font-size:14px">WASD move · Shift sprint · Mouse look/shoot · E interact · F flashlight · 1/2/3 weapons<br>Desktop only. Turn sound on.</p>
+<div class="b" id="b">CLICK TO START</div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const R = Math.random;
-  const renderer = new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  document.body.prepend(renderer.domElement);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x05060a);
-  scene.fog = new THREE.Fog(0x120a08, 20, 150);
-  const cam = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 1500);
-  scene.add(cam);
-  addEventListener('resize', () => {
-    renderer.setSize(innerWidth, innerHeight);
-    cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
-  });
-
-  // lights
-  scene.add(new THREE.AmbientLight(0x6a4a3a, .8));
-  const sun = new THREE.DirectionalLight(0xffc9a0, 1.1);
-  sun.position.set(-100, 90, -250); scene.add(sun);
-  const lamp = new THREE.PointLight(0xfff0d0, .9, 35); cam.add(lamp);
-
-  // terrain
-  const H = (x, z) => Math.sin(x*.05)*Math.cos(z*.04)*2.2 + Math.sin(x*.13+z*.11)*.6;
-  const g = new THREE.PlaneGeometry(400, 400, 120, 120); g.rotateX(-Math.PI/2);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) p.setY(i, H(p.getX(i), p.getZ(i)));
-  g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:0x6b5448, flatShading:true, roughness:1})));
-
-  // rocks
-  const rockM = new THREE.MeshStandardMaterial({color:0x4a3b34, flatShading:true});
-  for (let i = 0; i < 120; i++) {
-    const x = (R()-.5)*380, z = (R()-.5)*380, s = .5 + R()*2.5;
-    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(s), rockM);
-    r.position.set(x, H(x,z)+s*.4, z); r.rotation.set(R()*3, R()*3, R()*3); scene.add(r);
-  }
-
-  // Jupiter
-  const c = document.createElement('canvas'); c.width = 512; c.height = 512;
-  const cx = c.getContext('2d');
-  const cols = ['#c9996b','#e8d2b0','#a8683c','#f0e0c8','#8a5330','#d9b48a'];
-  for (let y = 0; y < 512; y += 8) {
-    cx.fillStyle = cols[(y/8 + (R()*2|0)) % cols.length];
-    cx.fillRect(0, y, 512, 8);
-  }
-  cx.fillStyle = '#b33b1e'; cx.beginPath(); cx.ellipse(340, 330, 50, 28, 0, 0, 7); cx.fill();
-  const jup = new THREE.Mesh(new THREE.SphereGeometry(130, 48, 32),
-    new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), fog:false}));
-  jup.position.set(-110, 100, -280); scene.add(jup);
-
-  // stars
-  const sp = [];
-  for (let i = 0; i < 900; i++) {
-    const v = new THREE.Vector3(R()-.5, R()*.6+.05, R()-.5).normalize().multiplyScalar(900);
-    sp.push(v.x, v.y, v.z);
-  }
-  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
-  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color:0xffffff, size:2, fog:false})));
-
-  // crashed ship
-  const ship = new THREE.Group();
-  const hull = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 14, 12), new THREE.MeshStandardMaterial({color:0xbbbbbb, metalness:.4}));
-  hull.rotation.z = Math.PI/2; hull.position.y = 3; ship.add(hull);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(3, 5, 12), new THREE.MeshStandardMaterial({color:0xdd4422}));
-  nose.rotation.z = -Math.PI/2; nose.position.set(9.5, 3, 0); ship.add(nose);
-  ship.position.set(0, H(0,0), 6); ship.rotation.z = .12; scene.add(ship);
-
-  // black boxes
-  const boxes = [];
-  const bbM = new THREE.MeshStandardMaterial({color:0xff7a00, emissive:0xff4400, emissiveIntensity:.6});
-  for (let i = 0; i < 3; i++) {
-    const a = i*2.1 + R()*.8, d = 45 + R()*70;
-    const x = Math.cos(a)*d, z = Math.sin(a)*d;
-    const grp = new THREE.Group();
-    grp.add(new THREE.Mesh(new THREE.BoxGeometry(1,.7,.7), bbM));
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,40,6), new THREE.MeshBasicMaterial({color:0xff8800, transparent:true, opacity:.35, fog:false}));
-    beam.position.y = 20; grp.add(beam);
-    grp.position.set(x, H(x,z)+.8, z); scene.add(grp); boxes.push(grp);
-  }
-
-  // escape pod
-  const pod = new THREE.Group();
-  pod.add(new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 12), new THREE.MeshStandardMaterial({color:0xdddddd})));
-  const podBeam = new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,60,8), new THREE.MeshBasicMaterial({color:0x44ff88, transparent:true, opacity:.4, fog:false}));
-  podBeam.position.y = 30; podBeam.visible = false; pod.add(podBeam);
-  const pa = R()*6.28; const px = Math.cos(pa)*150, pz = Math.sin(pa)*150;
-  pod.position.set(px, H(px,pz)+2, pz); scene.add(pod);
-
-  // keys (the aliens)
-  const sideM = new THREE.MeshStandardMaterial({color:0x222226});
-  const letters = 'ASDWEQZXCKEYSOALGO'.split('');
-  const topMats = letters.map(L => {
-    const k = document.createElement('canvas'); k.width = k.height = 64;
-    const q = k.getContext('2d'); q.fillStyle = '#d9d9de'; q.fillRect(0,0,64,64);
-    q.fillStyle = '#111'; q.font = 'bold 44px monospace'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(L, 32, 34);
-    return new THREE.MeshStandardMaterial({map:new THREE.CanvasTexture(k)});
-  });
-  const eyeW = new THREE.MeshBasicMaterial({color:0xffffff}), eyeB = new THREE.MeshBasicMaterial({color:0xff0000});
-  const keyGeo = new THREE.BoxGeometry(1.3, .9, 1.3);
-  const keys = [];
-  function spawnKey(px_, pz_) {
-    const a = R()*6.28, d = 55 + R()*25;
-    const x = Math.max(-190, Math.min(190, px_ + Math.cos(a)*d)), z = Math.max(-190, Math.min(190, pz_ + Math.sin(a)*d));
-    const m = topMats[R()*topMats.length|0];
-    const k = new THREE.Group();
-    k.add(new THREE.Mesh(keyGeo, [sideM,sideM,m,sideM,sideM,sideM]));
-    for (const s of [-.3,.3]) {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(.14,8,8), eyeW); e.position.set(s,.1,.66); k.add(e);
-      const pu = new THREE.Mesh(new THREE.SphereGeometry(.07,8,8), eyeB); pu.position.set(s,.1,.78); k.add(pu);
-    }
-    k.position.set(x, H(x,z), z);
-    k.userData = {ph:R()*6, sp:.85 + R()*.3};
-    scene.add(k); keys.push(k);
-  }
-
-  // audio
-  let ac;
-  const beep = (f, t=.15, type='square', v=.08) => {
-    try {
-      ac = ac || new (window.AudioContext||window.webkitAudioContext)();
-      const o = ac.createOscillator(), gn = ac.createGain();
-      o.type = type; o.frequency.value = f; gn.gain.value = v;
-      gn.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + t);
-      o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + t);
-    } catch(e){}
-  };
-
-  // state
-  let state = 'menu', yaw = 0, pitch = 0, got = 0, stam = 1, time = 0, spawnT = 0, subT = 0;
-  const pos = new THREE.Vector3(0, 0, 14);
-  const keysDown = {};
-  const lines = [
-    '[BLACK BOX] "Commander, there\'s something moving out there."',
-    '[BLACK BOX] "They\'re... keys. Giant keys. Why are there keys?"',
-    '[BLACK BOX] "Nobody ask how. Just get to the pod."'
-  ];
-  const say = (s, t=4) => { $('sub').textContent = s; subT = t; };
-
-  function reset() {
-    keys.forEach(k => scene.remove(k)); keys.length = 0;
-    boxes.forEach(b => b.visible = true); podBeam.visible = false;
-    got = 0; stam = 1; time = 0; spawnT = 0; yaw = 0; pitch = 0; pos.set(0, 0, 14);
-    $('bb').textContent = 0; $('obj').textContent = 'Find the black boxes';
-    say('[MISSION LOG] Crew status: unknown. Find the black boxes.', 5);
-  }
-
-  function end(win) {
-    state = 'over';
-    if (document.pointerLockElement) document.exitPointerLock();
-    $('t').textContent = win ? 'LONE SURVIVOR' : 'THE KEYS GOT YOU';
-    $('t').style.color = win ? '#7fffa0' : '#ff4a3d';
-    $('d').innerHTML = win
-      ? 'You made it off Jupiter. Nobody will believe you. Time: ' + time.toFixed(1) + 's'
-      : 'Black box recording ends. Boxes recovered: ' + got + '/3.<br>Signal lost. Their corpses are still on Jupiter since 2011.';
-    $('b').textContent = 'CLICK TO TRY AGAIN';
-    $('scr').style.display = 'flex';
-    if (!win) { $('hit').style.opacity = 1; beep(90, .6, 'sawtooth', .15); }
-  }
-
-  $('scr').addEventListener('click', () => {
-    $('hit').style.opacity = 0;
-    if (state !== 'play') reset();
-    state = 'play'; $('scr').style.display = 'none';
-    renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock();
-    beep(440, .1);
-  });
-  addEventListener('keydown', e => { keysDown[e.code] = true; });
-  addEventListener('keyup', e => { keysDown[e.code] = false; });
-  addEventListener('mousemove', e => {
-    if (document.pointerLockElement !== renderer.domElement) return;
-    yaw -= e.movementX*.0023; pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY*.0023));
-  });
-  document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && state === 'play') { state = 'menu'; $('t').textContent = 'PAUSED'; $('d').textContent = 'Click to resume.'; $('b').textContent = 'RESUME'; $('scr').style.display = 'flex'; }
-  });
-
-  const clock = new THREE.Clock();
-  function loop() {
-    requestAnimationFrame(loop);
-    const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
-    jup.rotation.y += dt*.01;
-    boxes.forEach((b, i) => { b.rotation.y += dt*2; });
-    if (state === 'play') {
-      time += dt;
-      // movement
-      const f = (keysDown.KeyW||keysDown.ArrowUp ? 1:0) - (keysDown.KeyS||keysDown.ArrowDown ? 1:0);
-      const s = (keysDown.KeyD||keysDown.ArrowRight ? 1:0) - (keysDown.KeyA||keysDown.ArrowLeft ? 1:0);
-      const sprint = keysDown.ShiftLeft || keysDown.ShiftRight;
-      const canSprint = sprint && stam > 0 && (f||s);
-      stam = Math.max(0, Math.min(1, stam + (canSprint ? -.28 : .15)*dt));
-      const spd = canSprint ? 11 : 7;
-      const len = Math.hypot(f, s) || 1;
-      pos.x += (-Math.sin(yaw)*f + Math.cos(yaw)*s)/len*spd*dt;
-      pos.z += (-Math.cos(yaw)*f - Math.sin(yaw)*s)/len*spd*dt;
-      pos.x = Math.max(-195, Math.min(195, pos.x)); pos.z = Math.max(-195, Math.min(195, pos.z));
-      const bob = (f||s) ? Math.sin(t*(canSprint?14:9))*.07 : 0;
-      cam.position.set(pos.x, H(pos.x,pos.z)+1.7+bob, pos.z);
-      cam.rotation.set(pitch, yaw, 0, 'YXZ');
-      $('stam').style.width = (stam*100)+'%';
-
-      // keys
-      spawnT -= dt;
-      const maxKeys = Math.min(6 + time/8|0, 28);
-      if (spawnT <= 0 && keys.length < maxKeys) { spawnKey(pos.x, pos.z); spawnT = Math.max(.8, 3 - time/40); }
-      const base = 5 + Math.min(time/20, 3);
-      for (const k of keys) {
-        const dx = pos.x - k.position.x, dz = pos.z - k.position.z, d = Math.hypot(dx, dz);
-        if (d < 1.4) { end(false); break; }
-        k.position.x += dx/d*base*k.userData.sp*dt; k.position.z += dz/d*base*k.userData.sp*dt;
-        k.rotation.y = Math.atan2(dx, dz);
-        k.position.y = H(k.position.x, k.position.z) + .7 + Math.abs(Math.sin(t*9 + k.userData.ph))*.9;
-        k.rotation.x = Math.sin(t*9 + k.userData.ph)*.15;
-      }
-
-      // black boxes
-      boxes.forEach(b => {
-        if (b.visible && Math.hypot(b.position.x-pos.x, b.position.z-pos.z) < 2.5) {
-          b.visible = false; got++; $('bb').textContent = got; beep(880, .2, 'sine', .12);
-          say(lines[got-1], 5);
-          if (got === 3) { podBeam.visible = true; $('obj').textContent = 'Reach the escape pod!'; beep(1200, .4, 'sine', .12); }
-        }
-      });
-
-      // objective pointer
-      let tgt = null, best = 1e9;
-      if (got < 3) boxes.forEach(b => { if (b.visible) { const d = Math.hypot(b.position.x-pos.x, b.position.z-pos.z); if (d < best) { best = d; tgt = b.position; } } });
-      else { tgt = pod.position; best = Math.hypot(pod.position.x-pos.x, pod.position.z-pos.z); }
-      if (tgt) {
-        const ang = Math.atan2(-(tgt.x-pos.x), -(tgt.z-pos.z)) - yaw;
-        $('arrow').style.transform = 'rotate(' + (-ang) + 'rad)';
-        $('dist').textContent = best.toFixed(0) + ' m';
-      }
-      if (got === 3 && best < 4) end(true);
-
-      if (subT > 0) { subT -= dt; if (subT <= 0) $('sub').textContent = ''; }
-    } else {
-      cam.position.set(Math.sin(t*.1)*30, 8, Math.cos(t*.1)*30 + 14);
-      cam.lookAt(0, 3, 6);
-    }
-    renderer.render(scene, cam);
-  }
-  loop();
+(()=>{
+const R=Math.random,$=id=>document.getElementById(id),PI=Math.PI;
+const rn=new THREE.WebGLRenderer({antialias:true});rn.setSize(innerWidth,innerHeight);document.body.prepend(rn.domElement);
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x010103);sc.fog=new THREE.Fog(0x010103,3,60);
+const cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,300);sc.add(cam);
+addEventListener('resize',()=>{rn.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
+const amb=new THREE.AmbientLight(0x1a2030,.9);sc.add(amb);
+const fl=new THREE.SpotLight(0xfff3dc,3,55,.45,.6,1);fl.position.set(.2,-.2,0);cam.add(fl);fl.target.position.set(0,0,-6);cam.add(fl.target);
+const mz=new THREE.PointLight(0xffaa44,0,12);mz.position.set(.3,-.2,-1);cam.add(mz);
+[[-8,3.4,0,0xff2222,.7],[8,3.4,0,0xff2222,.7],[0,2.2,0,0x22ffff,.9]].forEach(([x,y,z,c,i])=>{const l=new THREE.PointLight(c,i,22);l.position.set(x,y,z);sc.add(l)});
+const M=(c,e)=>new THREE.MeshStandardMaterial({color:c,roughness:.9,emissive:e||0});
+// world
+const S=[];
+function box(x,z,w,d,h,c,y0=0,solid=true){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c));m.position.set(x,y0+h/2,z);sc.add(m);if(solid)S.push([x-w/2,x+w/2,z-d/2,z+d/2]);return m}
+const gr=new THREE.Mesh(new THREE.PlaneGeometry(700,700),M(0x2d2824));gr.rotation.x=-PI/2;sc.add(gr);
+const fr=new THREE.Mesh(new THREE.PlaneGeometry(28,28),M(0x3a3f48));fr.rotation.x=-PI/2;fr.position.y=.02;sc.add(fr);
+box(0,0,28.6,28.6,.4,0x222630,4,false);
+for(const s of[-14,14]){box(-8.5,s,11,.6,4,0x30343c);box(8.5,s,11,.6,4,0x30343c);box(s,-8.5,.6,11,4,0x30343c);box(s,8.5,.6,11,4,0x30343c)}
+const core=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.5,1.6,10),M(0x113344,0x00aacc));core.position.set(0,.8,0);sc.add(core);S.push([-1.5,1.5,-1.5,1.5]);
+for(let i=0;i<70;i++){const a=R()*6.28,r=22+R()*200,s=.6+R()*2.5,m=new THREE.Mesh(new THREE.DodecahedronGeometry(s),M(0x3b322d));m.position.set(Math.cos(a)*r,s*.3,Math.sin(a)*r);m.rotation.set(R()*3,R()*3,0);sc.add(m)}
+function push(p,r){for(const[a,b,c,d]of S){const x=Math.max(a,Math.min(p.x,b)),z=Math.max(c,Math.min(p.z,d)),dx=p.x-x,dz=p.z-z,q=dx*dx+dz*dz;if(q<r*r){if(q>1e-6){const l=Math.sqrt(q);p.x+=dx/l*(r-l);p.z+=dz/l*(r-l)}else p.x+=r}}}
+const inR=p=>Math.abs(p.x)<14.3&&Math.abs(p.z)<14.3;
+// launch code sites
+const parts=[],A0=R()*6.28;
+for(let i=0;i<3;i++){const a=A0+i*2.1+R()*.5,d=85+R()*60,x=Math.cos(a)*d,z=Math.sin(a)*d;
+ box(x,z,.4,.4,14,0x555a62,0,false);const lt=new THREE.Mesh(new THREE.SphereGeometry(.4),M(0x400000,0xff0000));lt.position.set(x,14.3,z);sc.add(lt);
+ box(x+4,z,6,.5,2.5,0x3a3e44,0,false);box(x,z+4,.5,6,2.5,0x3a3e44,0,false);
+ const it=new THREE.Mesh(new THREE.IcosahedronGeometry(.4),new THREE.MeshStandardMaterial({color:0x44ffee,emissive:0x22ccbb,emissiveIntensity:1.5}));it.position.set(x+1,1.2,z+1);sc.add(it);
+ parts.push({x:x+1,z:z+1,m:it,got:false})}
+// crates
+const crates=[];
+function crate(x,z,fx){const m=new THREE.Mesh(new THREE.BoxGeometry(1.2,.9,.9),M(0x6a5a3a,0x221a08));m.position.set(x,.45,z);m.rotation.y=R()*3;sc.add(m);S.push([x-.7,x+.7,z-.7,z+.7]);crates.push({x,z,m,open:false,fx:fx})}
+crate(-4,10,'pistol');crate(-11,-11);crate(11,-11);crate(11,11);crate(-11,11);
+for(let i=0;i<8;i++){const a=R()*6.28,r=28+R()*110;crate(Math.cos(a)*r,Math.sin(a)*r)}
+// pod (hidden)
+const pod=new THREE.Group();const pb=new THREE.Mesh(new THREE.SphereGeometry(2.6,16,12),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x99aacc}));pb.scale.y=1.3;pb.position.y=2.5;pod.add(pb);
+const bm=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,80,8),new THREE.MeshBasicMaterial({color:0x44ff88,transparent:true,opacity:.45,fog:false}));bm.position.y=40;pod.add(bm);pod.visible=false;sc.add(pod);
+// gun
+const gun=new THREE.Mesh(new THREE.BoxGeometry(.1,.12,.55),M(0x555555));gun.position.set(.28,-.25,-.55);gun.visible=false;cam.add(gun);
+const W={pistol:{n:'PISTOL',d:2,r:.3,p:1,s:.008,a:0,am:24,c:0x666666},shotgun:{n:'SHOTGUN',d:1.5,r:.85,p:8,s:.07,a:0,am:10,c:0x7a4a2a},smg:{n:'SMG',d:1,r:.08,p:1,s:.03,a:1,am:60,c:0x2a3a2a}};
+const WK=['pistol','shotgun','smg'];
+let own={},ammo={pistol:0,shotgun:0,smg:0},cur=null,gcd=0,mouse=false;
+// keys (the Keis)
+const TY=[{hp:3,sp:3.2,sc:.9,tn:2,col:0xc8c8d0,dm:8},{hp:6,sp:4,sc:1,tn:3,col:0x7fcf90,dm:10},{hp:11,sp:4.6,sc:1.25,tn:4,col:0xd08080,dm:14},{hp:20,sp:5.4,sc:1.7,tn:6,col:0x7a2a6a,dm:20}];
+const HX=['#c8c8d0','#7fcf90','#d08080','#7a2a6a'];
+function faceTex(t){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle=HX[t];x.fillRect(0,0,128,128);
+ const eye=(px,py,r,col)=>{x.fillStyle=col||'#fff';x.beginPath();x.arc(px,py,r,0,7);x.fill();x.fillStyle=t==3?'#000':'#111';x.beginPath();x.arc(px+r*.2,py,r*.45,0,7);x.fill()};
+ x.strokeStyle='#111';x.lineWidth=6;
+ if(t==0){eye(44,50,16);eye(86,58,12);x.beginPath();x.arc(64,95,16,0,PI);x.stroke()}
+ if(t==1){eye(40,54,13);eye(88,54,13);x.lineWidth=8;x.beginPath();x.moveTo(20,30);x.lineTo(54,46);x.moveTo(108,30);x.lineTo(74,46);x.stroke();x.fillStyle='#200';x.fillRect(32,84,64,26);x.fillStyle='#fff';for(let i=0;i<6;i++)x.fillRect(34+i*10,84,6,11)}
+ if(t>=2){const n=t==2?3:5;for(let i=0;i<n;i++)eye(22+i*(84/(n-1)),t==2?(i==1?34:48):(i%2?34:52),t==2?12:10,t==2?'#ff0':'#f22');
+  x.fillStyle='#100';x.beginPath();x.moveTo(14,80);for(let i=0;i<9;i++)x.lineTo(14+i*12.5,i%2?112:84);x.lineTo(114,80);x.fill();x.fillStyle='#fff';for(let i=0;i<8;i++)x.fillRect(20+i*12,84,5,i%2?10:5)}
+ return new THREE.CanvasTexture(c)}
+const sd=[],tp=[],fm=[],tm=[];
+TY.forEach((T,t)=>{const f=faceTex(t);sd.push(M(0x2a2a30));tp.push(M(T.col));fm.push(new THREE.MeshStandardMaterial({map:f,emissiveMap:f,emissive:t==3?0xaaaaaa:0x666666}));tm.push(M(T.col&0x9f9f9f))});
+const tg=new THREE.ConeGeometry(.09,.9,5).rotateX(PI).translate(0,-.45,0);
+const keys=[];
+function mkKey(t){const T=TY[t],g=new THREE.Group();
+ g.add(new THREE.Mesh(new THREE.BoxGeometry(1.2,1.1,.8),[sd[t],sd[t],tp[t],sd[t],fm[t],sd[t]]));
+ const tn=[];for(let i=0;i<T.tn;i++){const a=i/T.tn*6.28,a1=new THREE.Group();a1.position.set(Math.cos(a)*.45,-.5,Math.sin(a)*.3);a1.add(new THREE.Mesh(tg,tm[t]));
+  const a2=new THREE.Group();a2.position.y=-.9;const m2=new THREE.Mesh(tg,tm[t]);m2.scale.set(.7,.7,.7);a2.add(m2);a1.add(a2);g.add(a1);tn.push([a1,a2])}
+ g.scale.setScalar(T.sc);g.userData={t,hp:T.hp,ph:R()*9,cd:0,vo:R()*4,fl:0,tn};return g}
+function spawn(x,z,t){const k=mkKey(t);k.position.set(x,1.5,z);sc.add(k);keys.push(k)}
+// audio
+let AC,nb;const au=()=>AC||(AC=new(window.AudioContext||window.webkitAudioContext)());
+function tone(f0,f1,d,ty,v){try{const a=au(),o=a.createOscillator(),g=a.createGain(),n=a.currentTime;o.type=ty||'sine';o.frequency.setValueAtTime(f0,n);o.frequency.exponentialRampToValueAtTime(f1,n+d);g.gain.setValueAtTime(v||.1,n);g.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(g);g.connect(a.destination);o.start();o.stop(n+d)}catch(e){}}
+function noise(d,v,f,ty){try{const a=au();if(!nb){nb=a.createBuffer(1,a.sampleRate,a.sampleRate);const c=nb.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=R()*2-1}
+ const s=a.createBufferSource(),fi=a.createBiquadFilter(),g=a.createGain(),n=a.currentTime;s.buffer=nb;fi.type=ty||'lowpass';fi.frequency.value=f;g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.0001,n+d);s.connect(fi);fi.connect(g);g.connect(a.destination);s.start();s.stop(n+d)}catch(e){}}
+function voice(t,v){if(t==0)tone(700+R()*300,1300,.15,'square',.05*v);else if(t==1)tone(260,110,.35,'sawtooth',.08*v);
+ else if(t==2){tone(420,170,.5,'sawtooth',.09*v);tone(430,160,.5,'square',.04*v)}else{tone(90,38,.9,'sawtooth',.16*v);noise(.5,.12*v,400)}}
+let subT=0;const say=(s,t)=>{$('sub').textContent=s;subT=t||4};
+// state
+let state='menu',fresh=true,yaw=0,pitch=0,hp=100,coreHP=400,stam=1,time=0,kills=0,got=0,wave=0,wa=false,nw=45,toSpawn=0,spT=0,fin=false,finLeft=0,fdir=0,alT=0,scT=0;
+const pp=new THREE.Vector3(0,0,6),K={};
+function hurt(n){hp-=n;$('hit').style.opacity=1;setTimeout(()=>$('hit').style.opacity=0,200);tone(130,50,.25,'sawtooth',.2);if(hp<=0)end(false,'The Keis tore you apart.')}
+function end(win,msg){if(state==='over')return;state='over';if(document.pointerLockElement)document.exitPointerLock();
+ $('t').textContent=win?'YOU ESCAPED':'SIGNAL LOST';$('t').style.color=win?'#7fffa0':'#ff4a3d';
+ $('d').innerHTML=(win?'The pod launches. You are the lone survivor.':msg)+'<br>Keis destroyed: '+kills+' · Hordes survived: '+Math.max(0,wave-(wa?1:0))+' · Code parts: '+got+'/3';
+ $('b').textContent='CLICK TO TRY AGAIN';$('scr').style.display='flex'}
+function reset(){keys.forEach(k=>sc.remove(k));keys.length=0;hp=100;coreHP=400;stam=1;time=0;kills=0;got=0;wave=0;wa=false;nw=45;toSpawn=0;fin=false;finLeft=0;own={};ammo={pistol:0,shotgun:0,smg:0};cur=null;gun.visible=false;
+ pp.set(0,0,6);yaw=0;pitch=0;pod.visible=false;amb.color.set(0x1a2030);sc.fog.color.set(0x010103);sc.background.set(0x010103);
+ parts.forEach(p=>{p.got=false;sc.add(p.m)});crates.forEach(c=>{c.open=false;c.m.material.color.set(0x6a5a3a)});say('Emergency power only. Find the weapon crate near the core.',6)}
+function equip(g){if(!own[g])return;cur=g;gun.visible=true;gun.material.color.set(W[g].c);gun.scale.z=g=='shotgun'?1.5:g=='smg'?1.1:.8}
+function give(g){if(!own[g]){own[g]=1;ammo[g]+=W[g].am}else ammo[g]+=Math.ceil(W[g].am*.6);equip(g)}
+function openCrate(c){c.open=true;c.m.material.color.set(0x2a2418);tone(500,900,.15,'sine',.1);tone(700,1400,.2,'sine',.08);
+ let g=c.fx,r=R();if(!g){if(r<.22)g='shotgun';else if(r<.45)g='smg';else if(r<.62){hp=Math.min(100,hp+40);say('Medkit: +40 HP',3);return}else g=cur||'pistol'}
+ give(g);say('Found '+W[g].n+' (+ammo)',3)}
+function shoot(){if(!cur||gcd>0)return;const w=W[cur];if(ammo[cur]<=0){tone(200,200,.04,'square',.05);gcd=.25;return}
+ gcd=w.r;ammo[cur]--;mz.intensity=3;gun.position.z=-.42;noise(w.p>1?.3:.12,w.p>1?.5:.3,2500);tone(220,40,.12,'square',.1);
+ const o=cam.position,f=new THREE.Vector3();cam.getWorldDirection(f);
+ for(let i=0;i<w.p;i++){const d=f.clone().add(new THREE.Vector3((R()-.5)*w.s*2,(R()-.5)*w.s*2,(R()-.5)*w.s*2)).normalize();let bk=null,bt=60;
+  for(const k of keys){const v=k.position.clone().sub(o),t=v.dot(d);if(t<0||t>=bt)continue;if(v.sub(d.clone().multiplyScalar(t)).length()<.9*TY[k.userData.t].sc){bt=t;bk=k}}
+  if(bk){const u=bk.userData;u.hp-=w.d;u.fl=.12;bk.position.addScaledVector(d,.35);
+   if(u.hp<=0){sc.remove(bk);keys.splice(keys.indexOf(bk),1);kills++;noise(.05,.3,4000,'highpass');tone(300,80,.2,'square',.06)}}}}
+function startWave(){wave++;wa=true;toSpawn=4+wave*4;spT=0;say('HORDE '+wave+' INCOMING — defend the core!',5);tone(110,100,1.4,'sawtooth',.14);tone(113,104,1.4,'sawtooth',.1)}
+function startFinal(){fin=true;wa=false;toSpawn=0;finLeft=70;spT=0;amb.color.set(0x3a0808);sc.fog.color.set(0x140202);sc.background.set(0x140202);
+ const a=Math.hypot(pp.x,pp.z)<30?R()*6.28:Math.atan2(pp.z,pp.x);fdir=a;
+ pod.position.set(Math.max(-230,Math.min(230,pp.x+Math.cos(a)*110)),0,Math.max(-230,Math.min(230,pp.z+Math.sin(a)*110)));pod.visible=true;
+ for(let i=0;i<24;i++){const b=R()*6.28,r=18+R()*12;spawn(Math.cos(b)*r,Math.sin(b)*r,2+(R()<.6?1:0))}
+ say('LAUNCH CODE COMPLETE. The base is overrun — RUN to the escape pod!',8);tone(60,30,2,'sawtooth',.2)}
+const pickTier=()=>fin?2+(R()<.6?1:0):Math.min(3,Math.floor((wave-1)/1.4+R()*1.15));
+function near(){let b=null,bd=3;for(const c of crates){if(c.open)continue;const d=Math.hypot(c.x-pp.x,c.z-pp.z);if(d<bd){bd=d;b={c}}}
+ for(const p of parts){if(p.got)continue;const d=Math.hypot(p.x-pp.x,p.z-pp.z);if(d<bd){bd=d;b={p}}}return b}
+// input
+$('scr').addEventListener('click',()=>{try{au().resume()}catch(e){}
+ if(state==='over'||fresh){reset();fresh=false}state='play';$('scr').style.display='none';rn.domElement.requestPointerLock();
+ if(!window._dr){window._dr=1;try{const a=au();[50,53].forEach(f=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.value=.03;o.connect(g);g.connect(a.destination);o.start()})}catch(e){}}});
+addEventListener('keydown',e=>{K[e.code]=1;if(state!=='play')return;
+ if(e.code=='KeyF'){fl.visible=!fl.visible;tone(900,900,.03,'square',.05)}
+ const i=['Digit1','Digit2','Digit3'].indexOf(e.code);if(i>=0)equip(WK[i]);
+ if(e.code=='KeyE'){const n=near();if(n&&n.c)openCrate(n.c);else if(n&&n.p){n.p.got=true;sc.remove(n.p.m);got++;tone(600,1500,.4,'sine',.15);
+  if(got==3)startFinal();else say('Launch code part '+got+'/3 recovered. Keep searching.',5)}}});
+addEventListener('keyup',e=>K[e.code]=0);
+addEventListener('mousedown',()=>{mouse=true});addEventListener('mouseup',()=>{mouse=false});
+addEventListener('mousemove',e=>{if(document.pointerLockElement!==rn.domElement)return;yaw-=e.movementX*.0023;pitch=Math.max(-1.3,Math.min(1.3,pitch-e.movementY*.0023))});
+document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&state==='play'){state='menu';$('t').textContent='PAUSED';$('t').style.color='#ff9b3d';$('d').textContent='Click to resume.';$('b').textContent='RESUME';$('scr').style.display='flex'}});
+// loop
+const clock=new THREE.Clock();
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ mz.intensity=Math.max(0,mz.intensity-dt*30);gun.position.z+=(-.55-gun.position.z)*Math.min(1,dt*15);
+ if(state==='play'){time+=dt;gcd-=dt;
+  const f=(K.KeyW||K.ArrowUp?1:0)-(K.KeyS||K.ArrowDown?1:0),s=(K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0),sp=(K.ShiftLeft||K.ShiftRight)&&stam>0&&(f||s);
+  stam=Math.max(0,Math.min(1,stam+(sp?-.3:.18)*dt));const v=sp?9.5:6,l=Math.hypot(f,s)||1;
+  pp.x+=(-Math.sin(yaw)*f+Math.cos(yaw)*s)/l*v*dt;pp.z+=(-Math.cos(yaw)*f-Math.sin(yaw)*s)/l*v*dt;push(pp,.45);
+  pp.x=Math.max(-235,Math.min(235,pp.x));pp.z=Math.max(-235,Math.min(235,pp.z));
+  cam.position.set(pp.x,1.7+((f||s)?Math.sin(t*(sp?14:9))*.06:0),pp.z);cam.rotation.set(pitch,yaw,0,'YXZ');
+  if(mouse&&cur&&(W[cur].a||gcd<=0))shoot();
+  if(!fin){if(wa&&toSpawn<=0&&keys.length===0){wa=false;nw=28;say('Horde cleared. Search the moon for launch code parts.',5)}
+   if(!wa){nw-=dt;if(nw<=0)startWave()}
+   if(toSpawn>0){spT-=dt;if(spT<=0&&keys.length<45){const a=R()*6.28,r=34+R()*10;spawn(Math.cos(a)*r,Math.sin(a)*r,pickTier());toSpawn--;spT=Math.max(.35,1.2-wave*.1)}}}
+  else{if(finLeft>0){spT-=dt;if(spT<=0&&keys.length<60){const a=fdir+PI+(R()-.5)*2.2,r=26+R()*18;spawn(pp.x+Math.cos(a)*r,pp.z+Math.sin(a)*r,pickTier());finLeft--;spT=.3}}
+   alT-=dt;if(alT<=0){tone(900,600,.35,'square',.05);alT=.8}
+   if(Math.hypot(pod.position.x-pp.x,pod.position.z-pp.z)<3.5)end(true)}
+  for(let i=keys.length-1;i>=0;i--){const k=keys[i],u=k.userData,T=TY[u.t],kp=k.position;
+   const dp=Math.hypot(pp.x-kp.x,pp.z-kp.z);let tx=pp.x,tz=pp.z,toP=true;if(!fin&&dp>26){tx=0;tz=0;toP=false}
+   if(inR(kp)!==inR({x:tx,z:tz})){const ax=Math.abs(kp.x)>Math.abs(kp.z),wx=ax?Math.sign(kp.x)*14:0,wz=ax?0:Math.sign(kp.z)*14;if(Math.hypot(kp.x-wx,kp.z-wz)>4){tx=wx;tz=wz}}
+   const dx=tx-kp.x,dz=tz-kp.z,d=Math.hypot(dx,dz)||1,reach=toP?1.7*T.sc:3.4;
+   if(d>reach*.8){kp.x+=dx/d*T.sp*dt;kp.z+=dz/d*T.sp*dt}push(kp,.7*T.sc);
+   k.rotation.y=Math.atan2(pp.x-kp.x,pp.z-kp.z);k.rotation.z=Math.sin(t*1.5+u.ph)*.1;kp.y=1.5*T.sc+Math.sin(t*2+u.ph)*.25;
+   u.fl=Math.max(0,u.fl-dt);k.scale.setScalar(T.sc*(1+u.fl*2));
+   u.cd-=dt;if(toP&&dp<reach+.4){if(u.cd<=0){hurt(T.dm);u.cd=.9}}else if(!toP&&d<reach+.6&&!fin){coreHP-=T.dm*.12*dt;if(coreHP<=0)end(false,'The core was destroyed. The base fell.')}
+   u.vo-=dt;if(u.vo<=0){u.vo=3+R()*5;if(dp<30)voice(u.t,1-dp/30)}
+   u.tn.forEach(([a1,a2],j)=>{a1.rotation.x=Math.sin(t*5+u.ph+j)*.7;a1.rotation.z=Math.cos(t*4+u.ph+j*2)*.7;a2.rotation.x=Math.sin(t*6+u.ph+j)*.8})}
+  let nd=1e9;parts.forEach(p=>{if(!p.got)nd=Math.min(nd,Math.hypot(p.x-pp.x,p.z-pp.z))});
+  if(nd<1e8&&!fin){scT-=dt;if(scT<=0){tone(1400,1400,.04,'sine',.05);scT=Math.max(.2,nd/40)}}
+  parts.forEach(p=>{p.m.rotation.y+=dt*2});
+  const n=near();$('pr').textContent=n?(n.c?'[E] Open crate':'[E] Take launch code part'):'';
+  if(subT>0){subT-=dt;if(subT<=0)$('sub').textContent=''}
+  $('st').textContent='HP '+Math.max(0,hp|0)+'   STAMINA '+(stam*100|0)+'%\n'+(fin?'BASE OVERRUN':'CORE '+Math.max(0,coreHP/4|0)+'%')+'\nLAUNCH CODE '+got+'/3\n'+(fin?'FINAL HORDE — RUN TO THE POD':wa?'HORDE '+wave+': '+(keys.length+toSpawn)+' left':'Next horde in '+(nw|0)+'s')+(fin||got==3?'':'\nSCANNER: '+(nd<25?'HOT':nd<55?'WARM':'COLD'));
+  $('am').textContent=cur?W[cur].n+'  '+ammo[cur]:'NO WEAPON'
+ }else{cam.position.set(0,3,12);cam.lookAt(0,1,0)}
+ rn.render(sc,cam)}
+loop();
 })();
-</script>
-</body>
-</html>
+</script></body></html>
